@@ -117,26 +117,39 @@ def _season_standings(data: LeagueData, season: int, *, regular_only: bool = Tru
     rows = [team_season_row(data, season, tid, regular_only=regular_only) for tid in team_ids]
     rows = [r for r in rows if r["games"] > 0]
 
-    # Under median scoring the standings are ordered by total wins (matchup win
-    # plus median win), which is what the league actually seeds off.
+    # Regular-season order first: it sets the playoff seeds, and it *is* the
+    # final placing for everyone who misses the playoffs. Under median scoring
+    # the league seeds off total wins (matchup win plus median win).
     if rows and rows[0]["uses_median"]:
         rows.sort(key=lambda r: (-r["total_wins"], -r["points_for"]))
     else:
         rows.sort(key=lambda r: (-r["win_pct"], -r["points_for"]))
     for i, row in enumerate(rows, 1):
-        row["rank"] = i
+        row["reg_rank"] = i
 
     # Final placings. Only the playoff bracket can move a team: everyone who
     # misses the playoffs is fixed at their regular-season place, because the
     # consolation ("toilet bowl") games decide nothing in this league.
     playoff_teams = (data.seasons.get(season) or {}).get("playoff_teams") or 0
+    settled = any(r["espn_final_rank"] for r in rows)
     for row in rows:
-        made_playoffs = bool(playoff_teams) and row["rank"] <= playoff_teams
+        made_playoffs = bool(playoff_teams) and row["reg_rank"] <= playoff_teams
         row["made_playoffs"] = made_playoffs
         if made_playoffs:
-            row["final_rank"] = row["espn_final_rank"] or row["rank"]
+            row["final_rank"] = row["espn_final_rank"] or row["reg_rank"]
         else:
-            row["final_rank"] = row["rank"]
+            row["final_rank"] = row["reg_rank"]
+
+    # Present a finished season by where teams actually finished; present one
+    # still being played by the live standings, since no placing exists yet.
+    row_order = "final_rank" if settled else "reg_rank"
+    rows.sort(key=lambda r: r[row_order])
+    for row in rows:
+        row["rank"] = row[row_order]
+    # True once the bracket has been decided -- templates use it to label the
+    # leading row a champion rather than a league leader.
+    for row in rows:
+        row["season_complete"] = settled
     # Separate ranks for the "who is actually good" columns.
     for key, field in (("points_for", "pf_rank"), ("all_play_pct", "ap_rank"),
                        ("efficiency", "eff_rank"), ("luck", "luck_rank")):

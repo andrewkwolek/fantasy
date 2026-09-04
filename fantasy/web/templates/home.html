@@ -27,11 +27,13 @@
 
 {% if standings %}
 {% set leader = standings[0] %}
+{% set complete = leader.season_complete %}
 {% set scorer = standings|sort(attribute='points_for', reverse=true)|first %}
 {% set luckiest = standings|sort(attribute='luck', reverse=true)|first %}
 {% set unluckiest = standings|sort(attribute='luck')|first %}
 <div class="tiles">
-  {{ tile('Leader', leader.name, leader.record ~ ' · ' ~ leader.points_for|round(1) ~ ' PF') }}
+  {{ tile('Champion' if complete else 'Leader', leader.name,
+          leader.record ~ ' · ' ~ leader.points_for|round(1) ~ ' PF') }}
   {{ tile('Most points', scorer.name, scorer.points_for|round(1) ~ ' · ' ~ scorer.avg ~ '/wk') }}
   {{ tile('League average', league_avg, 'points per team per week') }}
   {{ tile('Luckiest', luckiest.name, '%+.1f wins vs expected'|format(luckiest.luck)) }}
@@ -63,7 +65,7 @@
         <tbody>
         {% for r in standings %}
         <tr>
-          <td class="rank">{{ r.rank }}</td>
+          <td class="rank">{% if complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
           <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
           <td class="num">{{ r.record }}</td>
           {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>
@@ -104,7 +106,7 @@
         <tbody>
         {% for r in power %}
         <tr>
-          <td class="rank">{{ r.rank }}</td>
+          <td class="rank">{% if complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
           <td><a href="/team/{{ season }}/{{ r.team_id }}">{{ r.name }}</a>
             <span class="muted">{{ r.record }}</span></td>
           <td class="num">{{ r.score }}</td>

@@ -18,7 +18,12 @@
     outscoring half the league; <b>Total</b> combines both and is what the standings
     are ordered by. {% endif %}Eff = share of the best possible lineup the manager
     actually started. Bench = points left sitting. SoS = average score opponents put
-    up against them.</p>
+    up against them.
+    {% if standings and standings[0].season_complete %}Ordered by final placing:
+    the playoff bracket decides the top {{ season_row.playoff_teams }}, everyone else
+    keeps their regular-season position (<b>Reg</b>) because the consolation bracket
+    counts for nothing.{% else %}Ordered by the current standings — no final placings
+    until the playoffs are done.{% endif %}</p>
   <div class="tbl-wrap">
   <table>
     <thead><tr>
@@ -28,12 +33,12 @@
       <th class="num">High</th><th class="num">Low</th><th class="num">σ</th>
       <th class="num">All-play</th><th class="num">xW</th><th class="num">Luck</th>
       <th class="num">Eff</th><th class="num">Bench</th><th class="num">SoS</th>
-      <th class="num">Final</th>
+      <th class="num" title="Where they finished the regular season">Reg</th>
     </tr></thead>
     <tbody>
     {% for r in standings %}
     <tr>
-      <td class="rank">{{ r.rank }}</td>
+      <td class="rank">{% if r.season_complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
       <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
       <td class="num">{{ r.record }}</td>
       {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>
@@ -50,11 +55,7 @@
       <td class="num">{{ (r.efficiency * 100)|round(1) }}%</td>
       <td class="num muted">{{ r.bench_points|round(0)|int }}</td>
       <td class="num muted">{{ r.sos }}</td>
-      <td class="num">{% if r.espn_final_rank %}
-        {%- if r.final_rank == 1 %}<span class="trophy">★ 1</span>
-        {%- else %}{{ r.final_rank }}{% endif %}
-        {%- if not r.made_playoffs %}<span class="muted" title="Missed the playoffs — placed by regular-season record; consolation games do not count."> ·</span>{% endif %}
-      {%- else %}—{% endif %}</td>
+      <td class="num muted">{{ r.reg_rank }}</td>
     </tr>
     {% endfor %}
     </tbody>
