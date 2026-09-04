@@ -2,19 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Rewritten by the static exporter when the site is served from a sub-path
      (e.g. /fantasy). Empty for the local server, which serves from the root. -->
 <meta name="base-path" content="">
+<meta name="color-scheme" content="light dark">
 <title>{% block title %}{{ league_name }}{% endblock %}</title>
+<!-- Applied before first paint so a saved dark choice never flashes white. -->
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")
+document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/inter-tight-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏈</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%236366f1'/><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M5 16c3-5.4 7.1-8.7 11-8.7S24 10.6 27 16c-3 5.4-7.1 8.7-11 8.7S8 21.4 5 16z'/><path d='M13.6 16h4.8M15.6 13.5v5M17.8 13.5v5'/></g></svg>">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="top-inner">
-    <a class="brand" href="/">{{ league_name }} <span>HQ</span></a>
-    <nav class="main">
+    <a class="brand" href="/"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 12c2.3-4.2 5.5-6.8 8.8-6.8s6.5 2.6 8.8 6.8c-2.3 4.2-5.5 6.8-8.8 6.8S5.5 16.2 3.2 12z"/><path d="M9.8 12h4.4M11.3 10.1v3.8M13 10.1v3.8"/></svg></span>
+      <span class="name">{{ league_name }} <span>HQ</span></span></a>
+    <nav class="main" aria-label="Sections">
       {% set p = request.url.path %}
       <a href="/" class="{{ 'active' if p == '/' }}">Dashboard</a>
       {% if display_season %}
@@ -26,18 +34,21 @@
       <a href="/records" class="{{ 'active' if p == '/records' }}">Records</a>
       <a href="/trades" class="{{ 'active' if p == '/trades' }}">Trades</a>
     </nav>
-    {% if seasons %}
-    <select id="season-jump" aria-label="Jump to season">
-      <option value="">Season…</option>
-      {# Relative on purpose: app.js prepends the base path, which differs
-         between the local server (root) and a static host on a sub-path. #}
-      {% for y in seasons %}<option value="season/{{ y }}">{{ y }}</option>{% endfor %}
-    </select>
-    {% endif %}
-    <button class="btn" id="theme-btn" type="button" aria-label="Toggle theme">Auto</button>
+    <div class="top-tools">
+      {% if seasons %}
+      <select id="season-jump" aria-label="Jump to season">
+        <option value="">Season…</option>
+        {# Relative on purpose: app.js prepends the base path, which differs
+           between the local server (root) and a static host on a sub-path. #}
+        {% for y in seasons %}<option value="season/{{ y }}">{{ y }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <button class="icon-btn" id="theme-btn" type="button"
+              aria-label="Toggle theme">Auto</button>
+    </div>
   </div>
 </header>
-<main>
+<main id="main">
   {% if is_demo %}
   <div class="banner"><strong>Demo data.</strong> This is a synthetic league used to
   verify the metrics. Add your league ID to <code>.env</code> and run
@@ -45,6 +56,11 @@
   {% endif %}
   {% block body %}{% endblock %}
 </main>
+<footer class="site">
+  <span>{{ league_name }} HQ</span>
+  <span aria-hidden="true">·</span>
+  <span>Built from ESPN league data. Consolation games excluded throughout.</span>
+</footer>
 <script src="/static/app.js"></script>
 </body>
 </html>

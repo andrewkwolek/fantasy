@@ -9,7 +9,7 @@
     <thead><tr><th class="l">#</th>{% for c in cols %}<th class="{{ c[2] }}">{{ c[0] }}</th>{% endfor %}</tr></thead>
     <tbody>
     {% for it in items %}
-    <tr><td class="rank">{{ loop.index }}</td>
+    <tr><td class="rank"><span class="badge">{{ loop.index }}</span></td>
       {% for c in cols %}<td class="{{ c[2] }}">{{ it[c[1]] if it[c[1]] is not none else '—' }}</td>{% endfor %}
     </tr>
     {% endfor %}
@@ -20,7 +20,7 @@
 {% endmacro %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Record Book</h1>
+  <div><div class="eyebrow">Every superlative</div><h1>Record Book</h1>
   <p>Every superlative in league history, regular season and playoffs together.</p></div>
 </div>
 

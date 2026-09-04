@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import signed %}
+{% from "_macros.html" import signed, rank_cell %}
 {% block title %}{{ season }} Draft — {{ league_name }}{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>{{ season }} Draft</h1>
+  <div><div class="eyebrow">Draft review</div><h1>{{ season }} Draft</h1>
   <p><b>Value</b> is the draft slot minus where the player actually finished among all
      drafted players that season. Pick 90 who finishes 20th is +70; a first-rounder who
      finishes 80th is deeply negative.</p></div>
@@ -12,13 +12,13 @@
 {% if grades %}
 <div class="card">
   <h2>Draft grades</h2>
-  <div class="tbl-wrap"><table>
+  <div class="tbl-wrap"><table class="sortable">
     <thead><tr><th class="l">#</th><th class="l">Grade</th><th class="l">Team</th>
       <th class="num">Picks</th><th class="num">Points</th><th class="num">Started</th>
       <th class="num">Value</th><th class="l">Best pick</th><th class="l">Worst pick</th></tr></thead>
     <tbody>
     {% for g in grades %}
-    <tr><td class="rank">{{ g.rank }}</td>
+    <tr>{{ rank_cell(g.rank, medal=true) }}
       <td class="l"><b>{{ g.grade }}</b></td>
       <td class="l"><a href="/team/{{ season }}/{{ g.team_id }}">{{ g.team }}</a>
         <div class="ow muted">{{ g.owner }}</div></td>

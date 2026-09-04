@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import delta, tile %}
+{% from "_macros.html" import delta, tile, rank_cell %}
 {% block title %}{{ season }} Power Rankings — {{ league_name }}{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>{{ season }} Power Rankings</h1>
+  <div><div class="eyebrow">Composite ranking</div><h1>{{ season }} Power Rankings</h1>
   <p>A composite of season scoring (30%), recent form (25%), all-play record (30%),
      consistency (10%) and lineup efficiency (5%). Each component is converted to a
      within-league percentile first, so no single scale dominates. Record is
@@ -13,15 +13,15 @@
 <div class="card">
   <h2>This week</h2>
   <div class="tbl-wrap">
-  <table>
-    <thead><tr><th class="l">#</th><th class="num">Δ</th><th class="l">Team</th>
+  <table class="sortable">
+    <thead><tr><th class="l">#</th><th class="num" data-nosort>Δ</th><th class="l">Team</th>
       <th class="num">Score</th><th class="num">Rec</th><th class="num">Streak</th>
       <th class="num">Scoring</th><th class="num">Form</th><th class="num">All-play</th>
       <th class="num">Consist.</th><th class="num">Eff</th></tr></thead>
     <tbody>
     {% for r in power %}
     <tr>
-      <td class="rank">{{ r.rank }}</td>
+      {{ rank_cell(r.rank, medal=true) }}
       <td class="num">{{ delta(r.delta) }}</td>
       <td><a href="/team/{{ season }}/{{ r.team_id }}">{{ r.name }}</a></td>
       <td class="num"><b>{{ r.score }}</b></td>

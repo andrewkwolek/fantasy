@@ -1,11 +1,29 @@
+{# Avatar. The initials are real text underneath; the logo, when ESPN has a
+   live one, is absolutely positioned on top and covers them. app.js removes
+   the <img> if it 404s, which simply reveals the monogram again -- ESPN
+   serves a lot of dead logo URLs and a broken-image glyph looked terrible. #}
+{% macro avatar(name) %}
+{%- set words = ((name or '?')|trim or '?').split() -%}
+{%- set mono = (words[0][0] ~ (words[1][0] if words|length > 1 else ''))|upper -%}
+<span class="avatar" data-mono="{{ mono }}" aria-hidden="true">{{ mono }}{{ caller() if caller }}</span>
+{%- endmacro %}
+
 {% macro team_cell(name, owner=None, logo=None, href=None) %}
 <div class="team-cell">
-  {% if logo %}<img class="logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+  {% call avatar(name) %}{% if logo %}<img class="logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}{% endcall %}
   <div style="min-width:0">
     <div class="nm">{% if href %}<a href="{{ href }}">{{ name }}</a>{% else %}{{ name }}{% endif %}</div>
     {% if owner %}<div class="ow">{{ owner }}</div>{% endif %}
   </div>
 </div>
+{% endmacro %}
+
+{# `medal` tints the top three; use it only where the order is a real placing
+   and not just row numbering. #}
+{% macro rank_cell(rank, medal=false, trophy=false) %}
+<td class="rank{{ ' r' ~ rank if medal and rank in [1, 2, 3] }}" data-sort="{{ rank }}">
+  {%- if trophy %}<span class="trophy">★</span>{% endif -%}
+  <span class="badge">{{ rank }}</span></td>
 {% endmacro %}
 
 {% macro signed(v, digits=1, suffix='') %}

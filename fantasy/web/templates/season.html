@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import team_cell, signed, tile %}
+{% from "_macros.html" import team_cell, signed, tile, rank_cell %}
 {% block title %}{{ season }} Season — {{ league_name }}{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>{{ season }} Season</h1>
+  <div><div class="eyebrow">Season detail</div><h1>{{ season }} Season</h1>
   <p>Every week, every team. The heatmap is centred on the league's average
      week, so blue is an above-average score and red is below.</p></div>
   <div><a class="btn" href="/draft/{{ season }}">Draft →</a>
@@ -25,7 +25,7 @@
     counts for nothing.{% else %}Ordered by the current standings — no final placings
     until the playoffs are done.{% endif %}</p>
   <div class="tbl-wrap">
-  <table>
+  <table class="sortable">
     <thead><tr>
       <th class="l">#</th><th class="l">Team</th><th class="num">Rec</th>
       {% if uses_median %}<th class="num">Median</th><th class="num">Total</th>{% endif %}
@@ -38,7 +38,7 @@
     <tbody>
     {% for r in standings %}
     <tr>
-      <td class="rank">{% if r.season_complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
+      {{ rank_cell(r.rank, medal=true, trophy=(r.season_complete and r.final_rank == 1)) }}
       <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
       <td class="num">{{ r.record }}</td>
       {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>

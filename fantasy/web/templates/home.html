@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import team_cell, signed, delta, tile, result_pill %}
+{% from "_macros.html" import team_cell, signed, delta, tile, result_pill, rank_cell %}
 {% block body %}
 {% if preseason %}
 <div class="banner"><strong>{{ preseason }} hasn't kicked off yet.</strong>
@@ -10,6 +10,7 @@
 {% endif %}
 <div class="page-head">
   <div>
+    <div class="eyebrow">{% if preseason %}Latest completed season{% else %}League dashboard{% endif %}</div>
     <h1>{{ season }} Dashboard</h1>
     <p>
       {%- if season_row.reg_season_weeks and period > season_row.reg_season_weeks -%}
@@ -54,7 +55,7 @@
         it strips the schedule out. Expected wins converts that to a win total;
         luck is the gap.</p>
       <div class="tbl-wrap">
-      <table>
+      <table class="sortable">
         <thead><tr>
           <th class="l">#</th><th class="l">Team</th><th class="num">Rec</th>
           {% if uses_median %}<th class="num">Median</th><th class="num">Total</th>{% endif %}
@@ -65,7 +66,7 @@
         <tbody>
         {% for r in standings %}
         <tr>
-          <td class="rank">{% if complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
+          {{ rank_cell(r.rank, medal=true, trophy=(complete and r.final_rank == 1)) }}
           <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
           <td class="num">{{ r.record }}</td>
           {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>
@@ -100,13 +101,14 @@
       <div class="card-head"><h2>Power rankings</h2>
         <a href="/power/{{ season }}">Detail →</a></div>
       <p class="sub">Scoring, all-play, recent form and consistency — not record.</p>
-      <table>
+      <div class="tbl-wrap">
+      <table class="sortable">
         <thead><tr><th class="l">#</th><th class="l">Team</th>
-          <th class="num">Score</th><th class="num">Δ</th></tr></thead>
+          <th class="num">Score</th><th class="num" data-nosort>Δ</th></tr></thead>
         <tbody>
         {% for r in power %}
         <tr>
-          <td class="rank">{% if complete and r.final_rank == 1 %}<span class="trophy">★</span>{% endif %}{{ r.rank }}</td>
+          {{ rank_cell(r.rank, medal=true, trophy=(complete and r.final_rank == 1)) }}
           <td><a href="/team/{{ season }}/{{ r.team_id }}">{{ r.name }}</a>
             <span class="muted">{{ r.record }}</span></td>
           <td class="num">{{ r.score }}</td>
@@ -115,6 +117,7 @@
         {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     {% if odds %}
@@ -131,12 +134,13 @@
 
     <div class="card">
       <div class="card-head"><h2>All-time</h2><a href="/history">Full history →</a></div>
-      <table>
+      <div class="tbl-wrap">
+      <table class="sortable">
         <thead><tr><th class="l">#</th><th class="l">Manager</th>
           <th class="num">Record</th><th class="num">Titles</th></tr></thead>
         <tbody>
         {% for r in all_time %}
-        <tr><td class="rank">{{ r.rank }}</td>
+        <tr>{{ rank_cell(r.rank, medal=true) }}
           <td><a href="/franchise/{{ data.slug_for(r.franchise_id) }}">{{ r.owner }}</a></td>
           <td class="num">{{ r.record }}</td>
           <td class="num">{% if r.titles %}<span class="trophy">{{ '★' * r.titles }}</span>{% else %}—{% endif %}</td>
@@ -144,6 +148,7 @@
         {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </div>

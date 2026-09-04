@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import team_cell, signed %}
+{% from "_macros.html" import team_cell, signed, rank_cell %}
 {% block title %}League History — {{ league_name }}{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>League History</h1>
+  <div><div class="eyebrow">All seasons</div><h1>League History</h1>
   <p>Franchises are stitched by owner, so a manager keeps one career line even
      after renaming the team every August.</p></div>
 </div>
@@ -13,7 +13,7 @@
   <p class="sub">Regular season only. Luck is career wins minus what the all-play
      record says those scores deserved.</p>
   <div class="tbl-wrap">
-  <table>
+  <table class="sortable">
     <thead><tr><th class="l">#</th><th class="l">Manager</th><th class="num">Yrs</th>
       <th class="num">Record</th><th class="num">Win%</th><th class="num">PF</th>
       <th class="num">Avg</th><th class="num">All-play</th><th class="num">Luck</th>
@@ -22,7 +22,7 @@
     <tbody>
     {% for r in all_time %}
     <tr>
-      <td class="rank">{{ r.rank }}</td>
+      {{ rank_cell(r.rank, medal=true) }}
       <td>{{ team_cell(r.owner, r.name, r.logo, '/franchise/' ~ data.slug_for(r.franchise_id)) }}</td>
       <td class="num muted">{{ r.seasons }}</td>
       <td class="num">{{ r.record }}</td>
