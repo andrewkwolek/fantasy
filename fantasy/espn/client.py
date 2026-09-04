@@ -132,8 +132,14 @@ class ESPNClient:
         params: dict | None = None,
         filters: dict | None = None,
         cache_key: str | None = None,
+        refresh: bool | None = None,
     ) -> dict:
-        """Fetch one league document for `season` with the given view(s)."""
+        """Fetch one league document for `season` with the given view(s).
+
+        `refresh` overrides the client default for this call, which is how the
+        scraper keeps completed seasons cached while always re-reading the one
+        still being played.
+        """
         views = [views] if isinstance(views, str) else list(views)
         params = dict(params or {})
         key = cache_key or "-".join(views) + "".join(
@@ -141,7 +147,8 @@ class ESPNClient:
         )
         path = self._cache_path(season, key)
 
-        if path.exists() and not self.refresh:
+        use_cache = not (self.refresh if refresh is None else refresh)
+        if path.exists() and use_cache:
             return json.loads(path.read_text())
 
         headers = {}
@@ -169,7 +176,10 @@ class ESPNClient:
         path.write_text(json.dumps(payload))
         return payload
 
-    def fetch_activity(self, season: int, *, offset: int = 0, limit: int = 25) -> dict:
+    def fetch_activity(
+        self, season: int, *, offset: int = 0, limit: int = 25,
+        refresh: bool | None = None,
+    ) -> dict:
         """Page through the league activity feed (adds, drops, trades)."""
         filters = {
             "topics": {
@@ -186,7 +196,7 @@ class ESPNClient:
         }
         key = f"activity-o{offset}-l{limit}"
         path = self._cache_path(season, key)
-        if path.exists() and not self.refresh:
+        if path.exists() and not (self.refresh if refresh is None else refresh):
             return json.loads(path.read_text())
 
         url = f"{BASE}/seasons/{season}/segments/0/leagues/{self.config.league_id}/communication/"

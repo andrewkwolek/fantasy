@@ -50,12 +50,15 @@ def _weeks_to_scan(season_row: dict) -> list[int]:
 
 
 def scrape_season(
-    client: ESPNClient, conn: sqlite3.Connection, season: int
+    client: ESPNClient, conn: sqlite3.Connection, season: int,
+    *, refresh: bool | None = None,
 ) -> SeasonReport:
     report = SeasonReport(season=season)
 
     # 1. Settings, members, teams, standings -----------------------------
-    core = client.fetch(season, ["mSettings", "mTeam", "mStandings", "mRoster"])
+    core = client.fetch(
+        season, ["mSettings", "mTeam", "mStandings", "mRoster"], refresh=refresh
+    )
     season_row = parse.parse_season(core, season)
     db.upsert(conn, "seasons", [season_row])
     db.upsert(conn, "members", parse.parse_members(core, season))
@@ -68,7 +71,9 @@ def scrape_season(
 
     # 2. Full schedule ---------------------------------------------------
     try:
-        sched = client.fetch(season, ["mMatchup", "mMatchupScore"], cache_key="schedule")
+        sched = client.fetch(
+            season, ["mMatchup", "mMatchupScore"], cache_key="schedule", refresh=refresh
+        )
         report.matchups = db.upsert(conn, "matchups", parse.parse_matchups(sched, season))
     except ESPNError as exc:
         report.warnings.append(f"schedule: {exc}")
@@ -82,6 +87,7 @@ def scrape_season(
                 ["mMatchup", "mMatchupScore", "mBoxscore"],
                 params={"scoringPeriodId": week},
                 cache_key=f"week-{week:02d}",
+                refresh=refresh,
             )
         except NotFound:
             break  # ran past the end of the season
@@ -101,14 +107,14 @@ def scrape_season(
 
     # 4. Draft -----------------------------------------------------------
     try:
-        draft = client.fetch(season, ["mDraftDetail"])
+        draft = client.fetch(season, ["mDraftDetail"], refresh=refresh)
         report.draft_picks = db.upsert(conn, "draft_picks", parse.parse_draft(draft, season))
     except ESPNError as exc:
         report.warnings.append(f"draft: {exc}")
 
     # 5. Transactions ----------------------------------------------------
     try:
-        txn_payload = client.fetch(season, ["mTransactions2"])
+        txn_payload = client.fetch(season, ["mTransactions2"], refresh=refresh)
         txns, items = parse.parse_transactions(txn_payload, season)
         report.transactions = db.upsert(conn, "transactions", txns)
         db.upsert(conn, "transaction_items", items)
@@ -119,7 +125,9 @@ def scrape_season(
     try:
         offset, total = 0, 0
         while offset < 500:  # ESPN stops returning topics well before this
-            payload = client.fetch_activity(season, offset=offset, limit=25)
+            payload = client.fetch_activity(
+                season, offset=offset, limit=25, refresh=refresh
+            )
             rows = parse.parse_activity(payload, season)
             if not rows:
                 break
@@ -147,11 +155,19 @@ def scrape_league(
             seasons = client.discover_seasons()
             log.info("found %d seasons: %s", len(seasons), seasons)
 
+        # Completed seasons are immutable, so their cached responses stay valid.
+        # The season still being played changes every week -- scores, standings,
+        # rosters -- so it is always re-read. Without this a weekly re-scrape
+        # would quietly serve last week's data.
+        newest = max(seasons) if seasons else None
+
         reports = []
         for season in seasons:
             started = time.monotonic()
             try:
-                report = scrape_season(client, conn, season)
+                report = scrape_season(
+                    client, conn, season, refresh=refresh or season == newest
+                )
             except ESPNError as exc:
                 report = SeasonReport(season=season, warnings=[str(exc)])
                 log.error("season %s failed: %s", season, exc)

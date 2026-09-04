@@ -1,0 +1,146 @@
+name: Weekly league update
+
+# Scrape ESPN and republish the site.
+#
+# SCHEDULE. GitHub cron is always UTC and does not follow daylight saving, so
+# pick the UTC hour that lands on 4am where you are. The NFL's Monday night game
+# ends around 04:30 UTC Tuesday, so every option below is safely after it:
+#
+#     4am Pacific   ->  '0 12 * * 2'  (11 during PDT, Mar-Nov)
+#     4am Mountain  ->  '0 11 * * 2'  (10 during MDT)
+#     4am Central   ->  '0 10 * * 2'  ( 9 during CDT)
+#     4am Eastern   ->  '0 09 * * 2'  ( 8 during EDT)
+#
+# Change the one line below to match. The hour drifts by one across DST; nothing
+# here cares, since it only has to run after Monday night and before you wake up.
+on:
+  schedule:
+    - cron: '0 12 * * 2'      # Tuesdays, 04:00 US Pacific (05:00 during PDT)
+  workflow_dispatch:           # ...and a "Run workflow" button for on-demand runs
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two publishes race; let a manual run supersede a queued scheduled one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Sub-path the site is served from. For https://<user>.github.io/<repo>/ this
+  # is /<repo>. Set to '' if you attach a custom domain (see CNAME_DOMAIN).
+  BASE_PATH: /fantasy
+  CNAME_DOMAIN: ''
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Completed seasons never change, so their raw ESPN responses are reused.
+      # The season in progress is always re-fetched regardless of this cache.
+      - name: Restore ESPN response cache
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: espn-raw-${{ github.run_id }}
+          restore-keys: espn-raw-
+
+      - name: Check credentials are present
+        env:
+          LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: |
+          missing=()
+          [ -n "$LEAGUE_ID" ] || missing+=(LEAGUE_ID)
+          [ -n "$ESPN_S2" ]   || missing+=(ESPN_S2)
+          [ -n "$SWID" ]      || missing+=(SWID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository secrets: ${missing[*]}"
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Write .env
+        env:
+          LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+          MEDIAN_SCORING_FROM: ${{ vars.MEDIAN_SCORING_FROM }}
+        run: |
+          umask 077
+          {
+            echo "LEAGUE_ID=$LEAGUE_ID"
+            echo "ESPN_S2=$ESPN_S2"
+            echo "SWID=$SWID"
+            echo "MEDIAN_SCORING_FROM=$MEDIAN_SCORING_FROM"
+          } > .env
+
+      - name: Scrape ESPN
+        run: python3 -m fantasy.cli scrape
+        # ESPN cookies expire every few months. A 401 here is the signal to
+        # refresh ESPN_S2 / SWID in the repository secrets.
+
+      - name: Build the site
+        run: |
+          ARGS=()
+          if [ -n "$CNAME_DOMAIN" ]; then
+            ARGS+=(--cname "$CNAME_DOMAIN")     # custom domain serves from root
+          else
+            ARGS+=(--base-path "$BASE_PATH")
+          fi
+          python3 -m fantasy.cli export --out dist "${ARGS[@]}"
+
+      - name: Sanity-check the build
+        run: |
+          test -f dist/index.html || { echo "::error::no index.html produced"; exit 1; }
+          pages=$(find dist -name index.html | wc -l)
+          echo "built $pages pages"
+          [ "$pages" -gt 10 ] || { echo "::error::suspiciously few pages ($pages)"; exit 1; }
+          # A credential must never reach the published site. Guard against an
+          # empty needle -- `grep -F ''` matches every file and would fail the
+          # build with a false positive.
+          leaked=0
+          for name in ESPN_S2 SWID; do
+            value=$(grep "^${name}=" .env | cut -d= -f2-)
+            bare=${value//[\{\}]/}
+            [ ${#bare} -ge 8 ] || continue
+            if grep -rqF -- "$bare" dist; then
+              echo "::error::${name} found in build output"
+              leaked=1
+            fi
+          done
+          [ "$leaked" -eq 0 ] || exit 1
+          echo "credential scan clean"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### League site updated"
+            echo ""
+            echo "- Pages: $(find dist -name index.html 2>/dev/null | wc -l)"
+            echo "- URL: ${{ steps.deploy.outputs.page_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"

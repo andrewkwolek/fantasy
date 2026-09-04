@@ -41,8 +41,9 @@ either form works. `.env` is gitignored.
 | `python3 -m fantasy.cli demo` | Generate a synthetic league (no ESPN needed) |
 
 Re-run `scrape` weekly during the season. Raw ESPN responses are cached under
-`data/raw/`, so re-runs only fetch what changed and the analytics never touch the
-network.
+`data/raw/`, and the season still in progress is always re-fetched while completed
+seasons are served from that cache — so a weekly update is quick without ever
+showing stale standings. `--refresh` forces everything.
 
 ## League rules this encodes
 
@@ -153,11 +154,55 @@ git push -f origin main
 
 In the repo: **Settings → Pages → Source: Deploy from a branch → `main` / `(root)`**.
 
+### Where it ends up
+
+A project site sits at a sub-path and does **not** collide with a user site:
+`andrewkwolek.github.io` (the `andrewkwolek.github.io` repo) and
+`andrewkwolek.github.io/fantasy/` (the `fantasy` repo) are separate Pages sites.
+
+For a custom domain, set it on **this repo only** — setting one on the user-site
+repo would move every project site with it:
+
+```bash
+python3 -m fantasy.cli export --cname league.example.com   # no --base-path
+```
+
+then **Settings → Pages → Custom domain**, and add a DNS `CNAME` record pointing
+`league` at `andrewkwolek.github.io`. With a custom domain the site is served
+from the root, so `--base-path` must be omitted.
+
+`--cname` is not optional convenience: GitHub stores the domain in a `CNAME` file
+inside the published branch, and every export wipes the output directory, so the
+flag rewrites it each build. Without it the domain detaches on your next publish.
+
 Re-publish after each weekly scrape:
 
 ```bash
 python3 -m fantasy.cli scrape && python3 -m fantasy.cli export --base-path /<repo>
 ```
+
+### Automatic weekly updates
+
+`.github/workflows/weekly-update.yml` scrapes ESPN and republishes the site every
+Tuesday morning, after Monday Night Football. To enable it:
+
+1. **Settings → Secrets and variables → Actions → Secrets**, add `LEAGUE_ID`,
+   `ESPN_S2` and `SWID`.
+2. Optionally add a **Variable** `MEDIAN_SCORING_FROM` (e.g. `2026`).
+3. **Settings → Pages → Source: GitHub Actions.**
+4. Set the cron hour for your timezone — GitHub cron is UTC and ignores daylight
+   saving, so the workflow header lists the UTC hour for 4am in each US zone.
+
+Run it by hand any time from **Actions → Weekly league update → Run workflow**.
+
+The job re-reads the season in progress every run but restores completed seasons
+from a cache, so a weekly update costs ESPN about 25 requests rather than 90. It
+fails loudly on expired cookies (refresh the two secrets), on a suspiciously small
+build, and if either credential is ever found in the output.
+
+Two GitHub behaviours worth knowing: scheduled workflows are **disabled after 60
+days without repository activity** (re-enable from the Actions tab), and cron runs
+can be delayed when GitHub is busy — the time is a floor, not a guarantee.
 
 ### Privacy
 

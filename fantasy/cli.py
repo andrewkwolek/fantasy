@@ -98,9 +98,12 @@ def cmd_export(args) -> int:
         args.out,
         base_path=args.base_path,
         noindex=not args.allow_indexing,
+        cname=args.cname,
     )
     print(f"\n  {result['pages']} pages -> {result['out']}")
     print(f"  base path: {result['base_path']}   size: {result['bytes'] / 1_000_000:.1f} MB")
+    if result["cname"]:
+        print(f"  custom domain: {result['cname']}  (CNAME written)")
     if result["failed"]:
         print(f"\n  {len(result['failed'])} page(s) failed:")
         for path, err in result["failed"][:10]:
@@ -153,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
         "--base-path", default="",
         help="Sub-path the site is served from, e.g. /my-league for "
              "https://user.github.io/my-league/. Omit for a root/custom domain.")
+    p_export.add_argument(
+        "--cname", default=None,
+        help="Custom domain, e.g. league.example.com. Writes the CNAME file "
+             "GitHub Pages needs; the build would otherwise delete it. With a "
+             "custom domain the site is served from the root, so omit --base-path.")
     p_export.add_argument(
         "--allow-indexing", action="store_true",
         help="Drop the noindex tag. GitHub Pages sites are public; by default "

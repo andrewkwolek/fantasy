@@ -140,6 +140,7 @@ def build(
     base_path: str = "",
     noindex: bool = True,
     clean: bool = True,
+    cname: str | None = None,
 ) -> dict:
     """Render the site into `out_dir`. Returns a summary."""
     base_path = "/" + base_path.strip("/") if base_path.strip("/") else ""
@@ -204,10 +205,17 @@ def build(
     # Stop GitHub Pages running the output through Jekyll.
     (out / ".nojekyll").write_text("")
 
+    # GitHub Pages keeps a custom domain in a CNAME file inside the published
+    # branch. Every build wipes the output directory, so the file has to be
+    # rewritten here or the domain silently detaches on the next publish.
+    if cname:
+        (out / "CNAME").write_text(cname.strip() + "\n")
+
     return {
         "pages": written,
         "failed": failed,
         "out": str(out.resolve()),
         "base_path": base_path or "/",
         "bytes": sum(f.stat().st_size for f in out.rglob("*") if f.is_file()),
+        "cname": cname or "",
     }
