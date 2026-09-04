@@ -17,6 +17,8 @@ on:
   schedule:
     - cron: '0 12 * * 2'      # Tuesdays, 04:00 US Pacific (05:00 during PDT)
   workflow_dispatch:           # ...and a "Run workflow" button for on-demand runs
+  push:
+    branches: [main]           # ...and rebuild whenever the site's code changes
 
 permissions:
   contents: read

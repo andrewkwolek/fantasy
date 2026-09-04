@@ -131,55 +131,34 @@ career line across seasons even after renaming the team every August.
 
 ## Publishing to GitHub Pages
 
-`export` renders every page to static HTML by calling the real route functions,
-so the published site and the local server never drift apart.
+The `main` branch holds source code, **not** the built site. Pointing Pages at
+`main / (root)` therefore publishes nothing useful — GitHub's Jekyll finds no
+`index.html` and renders `README.md` as the homepage instead. There are two
+correct ways to publish.
+
+### Recommended: deploy from Actions
+
+Set **Settings → Pages → Source: GitHub Actions**. The workflow in
+`.github/workflows/weekly-update.yml` scrapes, builds and uploads `dist/` as a
+Pages artifact, so no branch ever has to contain generated files. Nothing else
+to configure, and it keeps itself up to date (see below).
+
+### Alternative: publish the build to its own branch
+
+If you would rather not use Actions, push only the *contents of `dist/`* to a
+`gh-pages` branch and point Pages at that branch:
 
 ```bash
-# A project site at https://<you>.github.io/<repo>/ needs the repo as base path:
 python3 -m fantasy.cli export --base-path /<repo>
-
-# A user site (<you>.github.io) or a custom domain is served from the root:
-python3 -m fantasy.cli export
-```
-
-Then publish `dist/` (it is a self-contained site — HTML, CSS, JS, JSON, plus a
-`.nojekyll` and a `404.html`):
-
-```bash
 cd dist
-git init -b main && git add -A && git commit -m "Publish league site"
+git init -b gh-pages && git add -A && git commit -m "Publish league site"
 git remote add origin git@github.com:<you>/<repo>.git
-git push -f origin main
+git push -f origin gh-pages
 ```
 
-In the repo: **Settings → Pages → Source: Deploy from a branch → `main` / `(root)`**.
-
-### Where it ends up
-
-A project site sits at a sub-path and does **not** collide with a user site:
-`andrewkwolek.github.io` (the `andrewkwolek.github.io` repo) and
-`andrewkwolek.github.io/fantasy/` (the `fantasy` repo) are separate Pages sites.
-
-For a custom domain, set it on **this repo only** — setting one on the user-site
-repo would move every project site with it:
-
-```bash
-python3 -m fantasy.cli export --cname league.example.com   # no --base-path
-```
-
-then **Settings → Pages → Custom domain**, and add a DNS `CNAME` record pointing
-`league` at `andrewkwolek.github.io`. With a custom domain the site is served
-from the root, so `--base-path` must be omitted.
-
-`--cname` is not optional convenience: GitHub stores the domain in a `CNAME` file
-inside the published branch, and every export wipes the output directory, so the
-flag rewrites it each build. Without it the domain detaches on your next publish.
-
-Re-publish after each weekly scrape:
-
-```bash
-python3 -m fantasy.cli scrape && python3 -m fantasy.cli export --base-path /<repo>
-```
+Then **Settings → Pages → Source: Deploy from a branch → `gh-pages` / `(root)`**.
+Note this pushes `dist/`, not the repository root — that distinction is the whole
+point.
 
 ### Automatic weekly updates
 
