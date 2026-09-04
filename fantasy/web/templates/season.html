@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "_macros.html" import team_cell, signed, tile %}
+{% block title %}{{ season }} Season — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ season }} Season</h1>
+  <p>Every week, every team. The heatmap is centred on the league's average
+     week, so blue is an above-average score and red is below.</p></div>
+  <div><a class="btn" href="/draft/{{ season }}">Draft →</a>
+       <a class="btn" href="/power/{{ season }}">Power →</a></div>
+</div>
+
+<div class="card">
+  {% set uses_median = standings and standings[0].uses_median %}
+  <h2>Standings — advanced</h2>
+  <p class="sub">
+    {% if uses_median %}<b>Median</b> is the second win available each week, for
+    outscoring half the league; <b>Total</b> combines both and is what the standings
+    are ordered by. {% endif %}Eff = share of the best possible lineup the manager
+    actually started. Bench = points left sitting. SoS = average score opponents put
+    up against them.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr>
+      <th class="l">#</th><th class="l">Team</th><th class="num">Rec</th>
+      {% if uses_median %}<th class="num">Median</th><th class="num">Total</th>{% endif %}
+      <th class="num">PF</th><th class="num">PA</th><th class="num">Avg</th>
+      <th class="num">High</th><th class="num">Low</th><th class="num">σ</th>
+      <th class="num">All-play</th><th class="num">xW</th><th class="num">Luck</th>
+      <th class="num">Eff</th><th class="num">Bench</th><th class="num">SoS</th>
+      <th class="num">Final</th>
+    </tr></thead>
+    <tbody>
+    {% for r in standings %}
+    <tr>
+      <td class="rank">{{ r.rank }}</td>
+      <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
+      <td class="num">{{ r.record }}</td>
+      {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>
+      <td class="num"><b>{{ r.combined_record }}</b></td>{% endif %}
+      <td class="num">{{ '%.1f'|format(r.points_for) }}</td>
+      <td class="num muted">{{ '%.1f'|format(r.points_against) }}</td>
+      <td class="num">{{ r.avg }}</td>
+      <td class="num">{{ r.high }}</td>
+      <td class="num muted">{{ r.low }}</td>
+      <td class="num muted">{{ r.stdev }}</td>
+      <td class="num">{{ r.all_play_record }}</td>
+      <td class="num">{{ r.expected_wins }}</td>
+      <td class="num">{{ signed(r.luck) }}</td>
+      <td class="num">{{ (r.efficiency * 100)|round(1) }}%</td>
+      <td class="num muted">{{ r.bench_points|round(0)|int }}</td>
+      <td class="num muted">{{ r.sos }}</td>
+      <td class="num">{% if r.espn_final_rank %}
+        {%- if r.final_rank == 1 %}<span class="trophy">★ 1</span>
+        {%- else %}{{ r.final_rank }}{% endif %}
+        {%- if not r.made_playoffs %}<span class="muted" title="Missed the playoffs — placed by regular-season record; consolation games do not count."> ·</span>{% endif %}
+      {%- else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Weekly scores</h2>
+  <p class="sub">Diverging around the league average of {{ heat_center }} points.
+     Every cell shows its value, so the grid reads without relying on colour.</p>
+  <div class="tbl-wrap">
+  {{ charts.heatmap(row_labels=heat_rows, col_labels=heat_cols, values=heat_values,
+                    tips=heat_tips, center=heat_center, digits=0)|safe }}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Wins vs expected wins</h2>
+    <p class="sub">Expected wins come from all-play record. A team well above the
+       line is being carried by its schedule; below it, buried by one.</p>
+    {{ charts.grouped_bar(
+         standings,
+         [('wins','Actual wins'), ('expected_wins','Expected wins')],
+         label_key='name', width=560, label_width=150)|safe }}
+  </div>
+  <div class="card">
+    <h2>Schedule luck</h2>
+    <p class="sub">Actual wins minus expected wins.</p>
+    {{ charts.bar_chart(
+         charts.rows(standings|sort(attribute='luck', reverse=true),
+                     label='name', value='luck'),
+         width=560, label_width=150, diverging=true, digits=2,
+         suffix=' W')|safe }}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Points for vs points against</h2>
+    <p class="sub">Below the diagonal means you have outscored your opponents.</p>
+    {{ charts.scatter(pf_pa_points,
+         x_title='Points against', y_title='Points for',
+         diagonal=true, width=560, height=380)|safe }}
+  </div>
+  <div class="card">
+    <h2>Manager efficiency</h2>
+    <p class="sub">Share of each team's best possible lineup that actually started.
+       Shown as positions rather than bars — every team lands between 94% and 99%,
+       and zero-based bars would render that spread invisible.</p>
+    {{ charts.dot_plot(
+         charts.rows(standings|sort(attribute='efficiency', reverse=true),
+                     label='name', value='efficiency', scale=100),
+         width=560, label_width=150, digits=1, suffix='%',
+         reference=avg_efficiency, reference_label='league avg')|safe }}
+  </div>
+</div>
+{% endblock %}

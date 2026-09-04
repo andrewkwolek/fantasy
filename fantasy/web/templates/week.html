@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_pill, signed %}
+{% block title %}Week {{ period }}, {{ season }} — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Week {{ period }} <span class="muted">· {{ season }}</span></h1>
+  <p>League averaged {{ report.average_score }} points.</p></div>
+  <div>
+    {% if prev_period %}<a class="btn" href="/week/{{ season }}/{{ prev_period }}">← Week {{ prev_period }}</a>{% endif %}
+    {% if next_period %}<a class="btn" href="/week/{{ season }}/{{ next_period }}">Week {{ next_period }} →</a>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>The story</h2>
+  <ul class="headlines">{% for h in report.headlines %}<li>{{ h }}</li>{% endfor %}</ul>
+</div>
+
+<div class="card">
+  <h2>Scoreboard</h2>
+  <div class="grid3">
+  {% for a, b in pairs %}
+    <div class="matchup">
+      <div class="row {{ 'win' if a.result == 'W' else 'lose' }}">
+        <span>{{ a.team }}</span><span class="score">{{ a.points }}</span></div>
+      <div class="row {{ 'win' if b.result == 'W' else 'lose' }}">
+        <span>{{ b.team }}</span><span class="score">{{ b.points }}</span></div>
+      <div class="meta">Margin {{ (a.points - b.points)|abs|round(1) }} ·
+        combined {{ (a.points + b.points)|round(1) }}</div>
+    </div>
+  {% endfor %}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Week awards</h2>
+    <table>
+      <tbody>
+        <tr><td class="l muted">Highest score</td>
+          <td class="l">{{ report.high.team }}</td><td class="num">{{ report.high.points }}</td></tr>
+        <tr><td class="l muted">Lowest score</td>
+          <td class="l">{{ report.low.team }}</td><td class="num">{{ report.low.points }}</td></tr>
+        {% if report.blowout %}<tr><td class="l muted">Biggest blowout</td>
+          <td class="l">{{ report.blowout.team }} over {{ report.blowout.opponent }}</td>
+          <td class="num">+{{ report.blowout.margin|round(1) }}</td></tr>{% endif %}
+        {% if report.nail_biter %}<tr><td class="l muted">Closest game</td>
+          <td class="l">{{ report.nail_biter.team }} over {{ report.nail_biter.opponent }}</td>
+          <td class="num">+{{ report.nail_biter.margin|round(1) }}</td></tr>{% endif %}
+        {% if report.unlucky %}<tr><td class="l muted">Unluckiest</td>
+          <td class="l">{{ report.unlucky.team }} lost with a top-half score</td>
+          <td class="num">{{ report.unlucky.points }}</td></tr>{% endif %}
+        {% if report.lucky %}<tr><td class="l muted">Luckiest</td>
+          <td class="l">{{ report.lucky.team }} won with a bottom-half score</td>
+          <td class="num">{{ report.lucky.points }}</td></tr>{% endif %}
+        {% if report.best_manager %}<tr><td class="l muted">Best lineup</td>
+          <td class="l">{{ report.best_manager.team }}</td>
+          <td class="num">{{ (report.best_manager.efficiency * 100)|round(1) }}%</td></tr>{% endif %}
+        {% if report.most_left_on_bench %}<tr><td class="l muted">Most left on bench</td>
+          <td class="l">{{ report.most_left_on_bench.team }}</td>
+          <td class="num">{{ report.most_left_on_bench.bench_points }}</td></tr>{% endif %}
+      </tbody>
+    </table>
+    {% if report.most_left_on_bench and report.most_left_on_bench.misses %}
+    <p class="sub" style="margin-top:10px">Should have started:
+      {% for m in report.most_left_on_bench.misses %}<span class="chip">{{ m.benched }}
+      {{ m.benched_points }}</span> {% endfor %}</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Top performances</h2>
+    <p class="sub">Best individual starters across the league.</p>
+    <table>
+      <thead><tr><th class="l">Player</th><th class="l">Pos</th>
+        <th class="l">Team</th><th class="num">Pts</th></tr></thead>
+      <tbody>
+      {% for p in report.top_performers %}
+      <tr><td class="l">{{ p.player }}</td><td class="l muted">{{ p.position }}</td>
+        <td class="l muted">{{ p.team }}</td><td class="num">{{ p.points }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Scores this week</h2>
+  {{ charts.bar_chart(score_rows, width=760, label_width=170)|safe }}
+</div>
+{% endblock %}

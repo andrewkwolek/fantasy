@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tile, signed %}
+{% block title %}{{ career.owner }} — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ career.owner }}</h1>
+  <p>{{ career.first_season }}–{{ career.last_season }} · {{ career.seasons }} seasons ·
+     currently “{{ career.name }}”</p></div>
+</div>
+
+<div class="tiles">
+  {{ tile('Career record', career.record, '%.3f'|format(career.win_pct) ~ ' win rate') }}
+  {{ tile('Titles', career.titles, career.title_years|join(', ') if career.title_years else 'still hunting') }}
+  {{ tile('Playoff trips', career.playoff_appearances, 'playoff record ' ~ career.playoff_record) }}
+  {{ tile('Points for', career.points_for|round(0)|int, career.avg ~ ' per week') }}
+  {{ tile('All-play', career.all_play_record, '%+.1f wins of luck'|format(career.luck)) }}
+  {{ tile('Best finish', career.best_finish or '—', 'average finish ' ~ career.avg_finish) }}
+</div>
+
+<div class="card">
+  <h2>Season by season</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th class="l">Season</th><th class="l">Team name</th><th class="num">Rec</th>
+      <th class="num">Finish</th><th class="num">PF</th><th class="num">Avg</th>
+      <th class="num">All-play</th><th class="num">Luck</th><th class="num">Eff</th></tr></thead>
+    <tbody>
+    {% for r in by_season %}
+    <tr>
+      <td class="l"><a href="/team/{{ r.season }}/{{ r.team_id }}">{{ r.season }}</a></td>
+      <td class="l">{{ r.name }}</td>
+      <td class="num">{{ r.record }}</td>
+      <td class="num">{% if r.final_rank == 1 %}<span class="trophy">★ 1</span>
+        {% else %}{{ r.final_rank or '—' }}{% endif %}</td>
+      <td class="num">{{ '%.1f'|format(r.points_for) }}</td>
+      <td class="num">{{ r.avg }}</td>
+      <td class="num muted">{{ r.all_play_record }}</td>
+      <td class="num">{{ signed(r.luck) }}</td>
+      <td class="num muted">{{ (r.efficiency * 100)|round(1) }}%</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Points per week, by season</h2>
+    {{ charts.bar_chart(charts.rows(by_season, label='season', value='avg'),
+         width=560, label_width=70)|safe }}
+  </div>
+  <div class="card">
+    <h2>Luck by season</h2>
+    {{ charts.bar_chart(charts.rows(by_season, label='season', value='luck'),
+         width=560, label_width=70, diverging=true, digits=2, suffix=' W')|safe }}
+  </div>
+</div>
+{% endblock %}

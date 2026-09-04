@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% from "_macros.html" import team_cell, signed, delta, tile, result_pill %}
+{% block body %}
+{% if preseason %}
+<div class="banner"><strong>{{ preseason }} hasn't kicked off yet.</strong>
+  The {{ preseason }} league and
+  <a href="/draft/{{ preseason }}">draft</a> are already up on ESPN, but no games have
+  been played — so this dashboard is showing the {{ season }} season. It will switch
+  over automatically after Week 1.</div>
+{% endif %}
+<div class="page-head">
+  <div>
+    <h1>{{ season }} Dashboard</h1>
+    <p>
+      {%- if season_row.reg_season_weeks and period > season_row.reg_season_weeks -%}
+        Complete — {{ season_row.reg_season_weeks }}-week regular season plus playoffs
+        through week {{ period }}.
+      {%- elif season_row.reg_season_weeks -%}
+        Through week {{ period }} of {{ season_row.reg_season_weeks }}.
+      {%- else -%}
+        Through week {{ period }}.
+      {%- endif %}
+      Records tell you who won; the columns below tell you who has actually been good.</p>
+  </div>
+  <div>{% if period %}<a class="btn" href="/week/{{ season }}/{{ period }}">Week {{ period }} report →</a>{% endif %}</div>
+</div>
+
+{% if standings %}
+{% set leader = standings[0] %}
+{% set scorer = standings|sort(attribute='points_for', reverse=true)|first %}
+{% set luckiest = standings|sort(attribute='luck', reverse=true)|first %}
+{% set unluckiest = standings|sort(attribute='luck')|first %}
+<div class="tiles">
+  {{ tile('Leader', leader.name, leader.record ~ ' · ' ~ leader.points_for|round(1) ~ ' PF') }}
+  {{ tile('Most points', scorer.name, scorer.points_for|round(1) ~ ' · ' ~ scorer.avg ~ '/wk') }}
+  {{ tile('League average', league_avg, 'points per team per week') }}
+  {{ tile('Luckiest', luckiest.name, '%+.1f wins vs expected'|format(luckiest.luck)) }}
+  {{ tile('Unluckiest', unluckiest.name, '%+.1f wins vs expected'|format(unluckiest.luck)) }}
+</div>
+{% endif %}
+
+<div class="side">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Standings</h2>
+        <a href="/season/{{ season }}">Full season view →</a></div>
+      {% set uses_median = standings and standings[0].uses_median %}
+      <p class="sub">
+        {% if uses_median %}Two wins are available each week: one for the matchup,
+        one for beating the league median. <b>Total</b> is what the standings are
+        ordered by. {% endif %}All-play is your record against every team every week —
+        it strips the schedule out. Expected wins converts that to a win total;
+        luck is the gap.</p>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th class="l">#</th><th class="l">Team</th><th class="num">Rec</th>
+          {% if uses_median %}<th class="num">Median</th><th class="num">Total</th>{% endif %}
+          <th class="num">PF</th><th class="num">PA</th><th class="num">Avg</th>
+          <th class="num">All-play</th><th class="num">xW</th><th class="num">Luck</th>
+          <th class="num">Eff</th>
+        </tr></thead>
+        <tbody>
+        {% for r in standings %}
+        <tr>
+          <td class="rank">{{ r.rank }}</td>
+          <td>{{ team_cell(r.name, r.owner, r.logo, '/team/' ~ season ~ '/' ~ r.team_id) }}</td>
+          <td class="num">{{ r.record }}</td>
+          {% if uses_median %}<td class="num muted">{{ r.median_record }}</td>
+          <td class="num"><b>{{ r.combined_record }}</b></td>{% endif %}
+          <td class="num">{{ '%.1f'|format(r.points_for) }}</td>
+          <td class="num muted">{{ '%.1f'|format(r.points_against) }}</td>
+          <td class="num">{{ r.avg }}</td>
+          <td class="num">{{ r.all_play_record }}</td>
+          <td class="num">{{ r.expected_wins }}</td>
+          <td class="num">{{ signed(r.luck) }}</td>
+          <td class="num">{{ (r.efficiency * 100)|round(1) }}%</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    {% if report %}
+    <div class="card">
+      <div class="card-head"><h2>Week {{ period }}</h2>
+        <a href="/week/{{ season }}/{{ period }}">Full report →</a></div>
+      <ul class="headlines">
+        {% for h in report.headlines %}<li>{{ h }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Power rankings</h2>
+        <a href="/power/{{ season }}">Detail →</a></div>
+      <p class="sub">Scoring, all-play, recent form and consistency — not record.</p>
+      <table>
+        <thead><tr><th class="l">#</th><th class="l">Team</th>
+          <th class="num">Score</th><th class="num">Δ</th></tr></thead>
+        <tbody>
+        {% for r in power %}
+        <tr>
+          <td class="rank">{{ r.rank }}</td>
+          <td><a href="/team/{{ season }}/{{ r.team_id }}">{{ r.name }}</a>
+            <span class="muted">{{ r.record }}</span></td>
+          <td class="num">{{ r.score }}</td>
+          <td class="num">{{ delta(r.delta) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if odds %}
+    <div class="card">
+      <h2>Playoff odds</h2>
+      <p class="sub">10,000 simulations of the remaining schedule, drawing each
+        team's weekly score from its own distribution.</p>
+      {{ charts.bar_chart(
+           charts.rows(odds, label='team', value='playoff_odds'),
+           width=430, label_width=132, height_per_row=26,
+           suffix='%', digits=1)|safe }}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>All-time</h2><a href="/history">Full history →</a></div>
+      <table>
+        <thead><tr><th class="l">#</th><th class="l">Manager</th>
+          <th class="num">Record</th><th class="num">Titles</th></tr></thead>
+        <tbody>
+        {% for r in all_time %}
+        <tr><td class="rank">{{ r.rank }}</td>
+          <td><a href="/franchise/{{ data.slug_for(r.franchise_id) }}">{{ r.owner }}</a></td>
+          <td class="num">{{ r.record }}</td>
+          <td class="num">{% if r.titles %}<span class="trophy">{{ '★' * r.titles }}</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

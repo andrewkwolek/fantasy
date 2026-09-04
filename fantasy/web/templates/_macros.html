@@ -1,0 +1,29 @@
+{% macro team_cell(name, owner=None, logo=None, href=None) %}
+<div class="team-cell">
+  {% if logo %}<img class="logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+  <div style="min-width:0">
+    <div class="nm">{% if href %}<a href="{{ href }}">{{ name }}</a>{% else %}{{ name }}{% endif %}</div>
+    {% if owner %}<div class="ow">{{ owner }}</div>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro signed(v, digits=1, suffix='') %}
+<span class="{{ 'pos' if v > 0 else ('neg' if v < 0 else 'muted') }}">
+{{ '%+.*f'|format(digits, v) }}{{ suffix }}</span>
+{% endmacro %}
+
+{% macro delta(d) %}
+{% if d > 0 %}<span class="delta-up">{{ d }}</span>
+{% elif d < 0 %}<span class="delta-dn">{{ -d }}</span>
+{% else %}<span class="delta-flat"></span>{% endif %}
+{% endmacro %}
+
+{% macro tile(k, v, d=None) %}
+<div class="tile"><div class="k">{{ k }}</div><div class="v">{{ v }}</div>
+{% if d %}<div class="d">{{ d }}</div>{% endif %}</div>
+{% endmacro %}
+
+{% macro result_pill(r) %}
+<span class="pill {{ r|lower }}">{{ r }}</span>
+{% endmacro %}

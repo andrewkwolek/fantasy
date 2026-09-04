@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tile, signed, result_pill %}
+{% block title %}{{ team.name }} {{ season }} — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ team.name }}</h1>
+  <p>{{ season }} · {{ standing.owner }}
+    {% if career %} · <a href="/franchise/{{ data.slug_for(team.franchise_id) }}">all-time career →</a>{% endif %}</p></div>
+</div>
+
+{% if not standing %}
+<div class="banner"><strong>No games played yet in {{ season }}.</strong>
+  Season totals appear here after Week 1. The draft below is already in.</div>
+{% endif %}
+
+{% if standing %}
+<div class="tiles">
+  {{ tile('Record', standing.record, 'rank #' ~ standing.rank) }}
+  {{ tile('Points for', standing.points_for, standing.avg ~ ' per week · #' ~ standing.pf_rank) }}
+  {{ tile('All-play', standing.all_play_record, (standing.all_play_pct * 100)|round(1) ~ '% · #' ~ standing.ap_rank) }}
+  {{ tile('Luck', '%+.2f'|format(standing.luck), 'wins vs ' ~ standing.expected_wins ~ ' expected') }}
+  {{ tile('Efficiency', (standing.efficiency * 100)|round(1) ~ '%', standing.bench_points ~ ' pts left on bench') }}
+  {{ tile('Best / worst', standing.high ~ ' / ' ~ standing.low, 'σ ' ~ standing.stdev) }}
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="card">
+  <h2>Week by week</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th class="l">Wk</th><th class="l">Opponent</th><th class="num">Score</th>
+      <th class="num">Opp</th><th class="l">Result</th><th class="num">Margin</th>
+      <th class="num">Optimal</th><th class="num">Eff</th><th class="num">Bench</th>
+      <th class="num">All-play</th><th class="l">Should have started</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td class="l">{{ r.period }}{% if r.is_consolation %}
+        <span class="muted" title="Consolation game — does not count toward records, standings or head-to-head">C</span>
+        {%- elif r.is_playoff %} <span class="muted" title="Playoff game">P</span>{% endif %}</td>
+      <td class="l"><a href="/team/{{ season }}/{{ r.opponent_id }}">{{ r.opponent }}</a></td>
+      <td class="num">{{ r.points }}</td>
+      <td class="num muted">{{ r.opponent_points }}</td>
+      <td class="l">{{ result_pill(r.result) }}</td>
+      <td class="num">{{ signed(r.margin) }}</td>
+      <td class="num muted">{{ r.optimal or '—' }}</td>
+      <td class="num">{% if r.forfeit %}<span class="muted" title="ESPN reports every starter at 0.00 for this week — a forfeit or commissioner zero-out. Excluded from efficiency.">forfeit</span>
+        {% elif r.efficiency %}{{ (r.efficiency * 100)|round(1) }}%{% else %}—{% endif %}</td>
+      <td class="num muted">{{ r.bench or '—' }}</td>
+      <td class="num muted">{{ r.all_play }}</td>
+      <td class="l muted">{% for m in r.misses[:2] %}{{ m.benched }} ({{ m.benched_points }}){% if not loop.last %}, {% endif %}{% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% endif %}
+
+<div class="grid2">
+  {% if rows %}
+  <div class="card">
+    <h2>Scoring by week</h2>
+    {{ charts.bar_chart(week_rows, width=560, label_width=70)|safe }}
+  </div>
+  {% endif %}
+  {% if draft %}
+  <div class="card">
+    <h2>{{ season }} draft</h2>
+    <p class="sub">Value = draft slot minus where the player actually finished.</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th class="l">#</th><th class="l">Player</th><th class="l">Pos</th>
+        <th class="num">Pts</th><th class="num">Finish</th><th class="num">Value</th></tr></thead>
+      <tbody>
+      {% for p in draft %}
+      <tr><td class="l muted">{{ p.overall_pick }}</td><td class="l">{{ p.player }}</td>
+        <td class="l muted">{{ p.position }}</td><td class="num">{{ p.points }}</td>
+        <td class="num muted">{{ p.points_rank }}</td>
+        <td class="num">{{ signed(p.value, 0) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

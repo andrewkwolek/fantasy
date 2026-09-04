@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import team_cell, signed %}
+{% block title %}League History — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>League History</h1>
+  <p>Franchises are stitched by owner, so a manager keeps one career line even
+     after renaming the team every August.</p></div>
+</div>
+
+<div class="card">
+  <h2>All-time standings</h2>
+  <p class="sub">Regular season only. Luck is career wins minus what the all-play
+     record says those scores deserved.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th class="l">#</th><th class="l">Manager</th><th class="num">Yrs</th>
+      <th class="num">Record</th><th class="num">Win%</th><th class="num">PF</th>
+      <th class="num">Avg</th><th class="num">All-play</th><th class="num">Luck</th>
+      <th class="num">Titles</th><th class="num">Playoffs</th>
+      <th class="num">Best</th><th class="num">Eff</th></tr></thead>
+    <tbody>
+    {% for r in all_time %}
+    <tr>
+      <td class="rank">{{ r.rank }}</td>
+      <td>{{ team_cell(r.owner, r.name, r.logo, '/franchise/' ~ data.slug_for(r.franchise_id)) }}</td>
+      <td class="num muted">{{ r.seasons }}</td>
+      <td class="num">{{ r.record }}</td>
+      <td class="num">{{ '%.3f'|format(r.win_pct) }}</td>
+      <td class="num">{{ r.points_for|round(0)|int }}</td>
+      <td class="num">{{ r.avg }}</td>
+      <td class="num muted">{{ r.all_play_record }}</td>
+      <td class="num">{{ signed(r.luck) }}</td>
+      <td class="num">{% if r.titles %}<span class="trophy">{{ '★' * r.titles }}</span>{% else %}—{% endif %}</td>
+      <td class="num muted">{{ r.playoff_appearances }}</td>
+      <td class="num muted">{{ r.best_finish or '—' }}</td>
+      <td class="num muted">{% if r.efficiency %}{{ (r.efficiency * 100)|round(1) }}%{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Career win percentage</h2>
+    {{ charts.bar_chart(charts.rows(all_time, label='owner', value='win_pct'),
+         width=560, label_width=150, digits=3)|safe }}
+  </div>
+  <div class="card">
+    <h2>Career luck</h2>
+    <p class="sub">Wins above or below what their scoring earned.</p>
+    {{ charts.bar_chart(
+         charts.rows(all_time|sort(attribute='luck', reverse=true),
+                     label='owner', value='luck'),
+         width=560, label_width=150, diverging=true, digits=1, suffix=' W')|safe }}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Champions</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th class="l">Season</th><th class="l">Champion</th><th class="l">Manager</th>
+      <th class="l">Runner-up</th><th class="l">Best regular season</th>
+      <th class="l">Scoring leader</th></tr></thead>
+    <tbody>
+    {% for c in champions %}
+    <tr>
+      <td class="l"><a href="/season/{{ c.season }}">{{ c.season }}</a></td>
+      <td class="l">{% if c.champion %}<span class="trophy">★</span> {{ c.champion }}
+        {% else %}<span class="muted">in progress</span>{% endif %}</td>
+      <td class="l muted">{{ c.champion_owner or '—' }}</td>
+      <td class="l muted">{{ c.runner_up or '—' }}</td>
+      <td class="l muted">{{ c.regular_season_best or '—' }}
+        {% if c.regular_season_record %}({{ c.regular_season_record }}){% endif %}</td>
+      <td class="l muted">{{ c.scoring_leader or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Head to head, all time</h2>
+  <p class="sub">Row manager's record against the column manager.</p>
+  <div class="tbl-wrap">
+  <table class="h2h">
+    <thead><tr><th class="l">vs</th>
+      {% for fid in h2h.order %}<th title="{{ h2h.owners[fid] }}">{{ h2h.owners[fid].split(' ')[0] }}</th>{% endfor %}
+    </tr></thead>
+    <tbody>
+    {% for me in h2h.order %}
+    <tr><th class="l" title="{{ h2h.owners[me] }}">{{ h2h.owners[me] }}</th>
+      {% for them in h2h.order %}
+        {% if me == them %}<td class="self">—</td>
+        {% else %}{% set cell = h2h.cells.get(me ~ '|' ~ them) %}
+          {% if cell %}
+            <td data-tip="{{ h2h.owners[me] }} vs {{ h2h.owners[them] }}: {{ cell.record }} · {{ cell.pf }} to {{ cell.pa }}">
+              <b>{{ cell.record }}</b></td>
+          {% else %}<td class="muted">—</td>{% endif %}
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

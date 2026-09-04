@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "_macros.html" import signed %}
+{% block title %}{{ season }} Draft — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ season }} Draft</h1>
+  <p><b>Value</b> is the draft slot minus where the player actually finished among all
+     drafted players that season. Pick 90 who finishes 20th is +70; a first-rounder who
+     finishes 80th is deeply negative.</p></div>
+</div>
+
+{% if grades %}
+<div class="card">
+  <h2>Draft grades</h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="l">#</th><th class="l">Grade</th><th class="l">Team</th>
+      <th class="num">Picks</th><th class="num">Points</th><th class="num">Started</th>
+      <th class="num">Value</th><th class="l">Best pick</th><th class="l">Worst pick</th></tr></thead>
+    <tbody>
+    {% for g in grades %}
+    <tr><td class="rank">{{ g.rank }}</td>
+      <td class="l"><b>{{ g.grade }}</b></td>
+      <td class="l"><a href="/team/{{ season }}/{{ g.team_id }}">{{ g.team }}</a>
+        <div class="ow muted">{{ g.owner }}</div></td>
+      <td class="num muted">{{ g.picks }}</td>
+      <td class="num">{{ g.points }}</td>
+      <td class="num muted">{{ g.started_points }}</td>
+      <td class="num">{{ signed(g.value, 0) }}</td>
+      <td class="l muted">{{ g.best_pick.player }} <span class="pos">{{ '%+d'|format(g.best_pick.value) }}</span></td>
+      <td class="l muted">{{ g.worst_pick.player }} <span class="neg">{{ '%+d'|format(g.worst_pick.value) }}</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Draft value by team</h2>
+    {{ charts.bar_chart(charts.rows(grades, label='team', value='value'),
+         width=560, label_width=150, diverging=true, digits=0)|safe }}
+  </div>
+  <div class="card">
+    <h2>Where picks actually finished</h2>
+    <p class="sub">Below the diagonal beat its draft slot; above it disappointed.</p>
+    {{ charts.scatter(draft_points,
+        x_title='Draft pick', y_title='Finish among drafted players',
+        diagonal=true, color_key='color', color_scale=40,
+        width=560, height=420)|safe }}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Steals</h2>
+    <p class="sub">Latest picks that returned the most.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="l">Pick</th><th class="l">Player</th><th class="l">Pos</th>
+        <th class="l">Team</th><th class="num">Pts</th><th class="num">Finish</th>
+        <th class="num">Value</th></tr></thead>
+      <tbody>
+      {% for p in steals %}
+      <tr><td class="l muted">{{ p.overall_pick }}</td><td class="l">{{ p.player }}</td>
+        <td class="l muted">{{ p.position }}</td><td class="l muted">{{ p.team }}</td>
+        <td class="num">{{ p.points }}</td><td class="num muted">{{ p.points_rank }}</td>
+        <td class="num pos">{{ '%+d'|format(p.value) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>Busts</h2>
+    <p class="sub">Early picks that did not return their slot.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="l">Pick</th><th class="l">Player</th><th class="l">Pos</th>
+        <th class="l">Team</th><th class="num">Pts</th><th class="num">Finish</th>
+        <th class="num">Value</th></tr></thead>
+      <tbody>
+      {% for p in busts %}
+      <tr><td class="l muted">{{ p.overall_pick }}</td><td class="l">{{ p.player }}</td>
+        <td class="l muted">{{ p.position }}</td><td class="l muted">{{ p.team }}</td>
+        <td class="num">{{ p.points }}</td><td class="num muted">{{ p.points_rank }}</td>
+        <td class="num neg">{{ '%+d'|format(p.value) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+{% if waivers %}
+<div class="card">
+  <h2>Best waiver pickups</h2>
+  <p class="sub">Ranked by points actually contributed from the starting lineup after being added.
+    {% if waivers and waivers[0].inferred %}Pickup weeks are reconstructed by diffing
+    weekly rosters — ESPN does not serve its transaction feed for completed seasons —
+    so the week shown is when the player first appeared on the roster.{% endif %}</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="l">Player</th><th class="l">Pos</th><th class="l">Team</th>
+      <th class="num">Added wk</th><th class="num">Bid</th><th class="num">Started pts</th></tr></thead>
+    <tbody>
+    {% for w in waivers %}
+    <tr><td class="l">{{ w.player }}</td><td class="l muted">{{ w.position }}</td>
+      <td class="l muted">{{ w.team }}</td><td class="num muted">{{ w.week_added }}</td>
+      <td class="num muted">{{ w.bid or '—' }}</td>
+      <td class="num">{{ w.started_points }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<details class="raw card">
+  <summary>Full draft board ({{ board|length }} picks)</summary>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="l">#</th><th class="l">Rd</th><th class="l">Team</th>
+      <th class="l">Player</th><th class="l">Pos</th><th class="num">Pts</th>
+      <th class="num">Finish</th><th class="num">Value</th></tr></thead>
+    <tbody>
+    {% for p in board %}
+    <tr><td class="l muted">{{ p.overall_pick }}</td><td class="l muted">{{ p.round }}</td>
+      <td class="l">{{ p.team }}</td><td class="l">{{ p.player }}</td>
+      <td class="l muted">{{ p.position }}</td><td class="num">{{ p.points }}</td>
+      <td class="num muted">{{ p.points_rank }}</td>
+      <td class="num">{{ signed(p.value, 0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</details>
+{% else %}
+<div class="card"><p class="empty">No draft data for {{ season }}.</p></div>
+{% endif %}
+{% endblock %}

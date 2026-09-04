@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Record Book — {{ league_name }}{% endblock %}
+{% macro board(title, note, items, cols) %}
+<div class="card">
+  <h2>{{ title }}</h2>
+  {% if note %}<p class="sub">{{ note }}</p>{% endif %}
+  {% if items %}
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="l">#</th>{% for c in cols %}<th class="{{ c[2] }}">{{ c[0] }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for it in items %}
+    <tr><td class="rank">{{ loop.index }}</td>
+      {% for c in cols %}<td class="{{ c[2] }}">{{ it[c[1]] if it[c[1]] is not none else '—' }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No data yet.</p>{% endif %}
+</div>
+{% endmacro %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Record Book</h1>
+  <p>Every superlative in league history, regular season and playoffs together.</p></div>
+</div>
+
+{% set game_cols = [('Team','team','l'), ('Owner','owner','l'), ('Season','season','num'),
+                    ('Wk','period','num'), ('Points','points','num'),
+                    ('Opponent','opponent','l'), ('Opp pts','opponent_points','num')] %}
+<div class="grid2">
+  {{ board('Highest scores', 'Single week, any team.', records.highest_score, game_cols) }}
+  {{ board('Lowest scores',
+     'The weeks nobody talks about. A 0.0 means ESPN reported every starter at
+      0.00 — a forfeit or commissioner zero-out, which still counts in the
+      standings but is excluded from manager efficiency.',
+     records.lowest_score, game_cols) }}
+</div>
+
+{% set margin_cols = [('Winner','team','l'), ('Loser','opponent','l'), ('Season','season','num'),
+                      ('Wk','period','num'), ('Margin','margin','num'),
+                      ('Score','points','num'), ('Opp','opponent_points','num')] %}
+<div class="grid2">
+  {{ board('Biggest blowouts', None, records.biggest_blowout, margin_cols) }}
+  {{ board('Closest games', 'Decided by the smallest margins.', records.closest_game, margin_cols) }}
+</div>
+
+<div class="grid2">
+  {{ board('Best scores in a loss', 'Scored big, lost anyway.', records.highest_losing_score, game_cols) }}
+  {{ board('Worst scores in a win', 'Got away with it.', records.lowest_winning_score, game_cols) }}
+</div>
+
+<div class="grid2">
+  {{ board('Highest combined games', 'Both teams went off.', records.highest_combined,
+     [('Team','team','l'), ('Opponent','opponent','l'), ('Season','season','num'),
+      ('Wk','period','num'), ('Combined','combined','num')]) }}
+  {{ board('Most points left on the bench', 'Gap between the lineup started and the best one available.',
+     records.most_bench_points,
+     [('Team','team','l'), ('Season','season','num'), ('Wk','period','num'),
+      ('Scored','points','num'), ('Optimal','optimal','num'), ('Wasted','bench_points','num')]) }}
+</div>
+
+<div class="grid2">
+  {{ board('Perfect lineups', 'Started the optimal lineup — nothing left on the bench.',
+     records.perfect_weeks,
+     [('Team','team','l'), ('Owner','owner','l'), ('Season','season','num'),
+      ('Wk','period','num'), ('Points','points','num')]) }}
+  {{ board('Best scoring seasons', 'Regular season points.', records.best_season_pf,
+     [('Team','name','l'), ('Owner','owner','l'), ('Season','season','num'),
+      ('Record','record','num'), ('PF','points_for','num'), ('Avg','avg','num')]) }}
+</div>
+
+<div class="grid2">
+  {{ board('Luckiest seasons', 'Wins far above what the scores earned.', records.luckiest_seasons,
+     [('Team','name','l'), ('Season','season','num'), ('Record','record','num'),
+      ('Expected','expected_wins','num'), ('Luck','luck','num')]) }}
+  {{ board('Unluckiest seasons', 'The scoreboard was not the problem.', records.unluckiest_seasons,
+     [('Team','name','l'), ('Season','season','num'), ('Record','record','num'),
+      ('Expected','expected_wins','num'), ('Luck','luck','num')]) }}
+</div>
+{% endblock %}

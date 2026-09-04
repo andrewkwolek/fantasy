@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ league_name }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏈</text></svg>">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="/">{{ league_name }} <span>HQ</span></a>
+    <nav class="main">
+      {% set p = request.url.path %}
+      <a href="/" class="{{ 'active' if p == '/' }}">Dashboard</a>
+      {% if display_season %}
+      <a href="/season/{{ display_season }}" class="{{ 'active' if p.startswith('/season') }}">Season</a>
+      <a href="/power/{{ display_season }}" class="{{ 'active' if p.startswith('/power') }}">Power</a>
+      <a href="/draft/{{ draft_season }}" class="{{ 'active' if p.startswith('/draft') }}">Draft</a>
+      {% endif %}
+      <a href="/history" class="{{ 'active' if p == '/history' }}">History</a>
+      <a href="/records" class="{{ 'active' if p == '/records' }}">Records</a>
+      <a href="/trades" class="{{ 'active' if p == '/trades' }}">Trades</a>
+    </nav>
+    {% if seasons %}
+    <select onchange="if(this.value)location.href=this.value" aria-label="Jump to season">
+      <option value="">Season…</option>
+      {% for y in seasons %}<option value="/season/{{ y }}">{{ y }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <button class="btn" id="theme-btn" type="button" aria-label="Toggle theme">Auto</button>
+  </div>
+</header>
+<main>
+  {% if is_demo %}
+  <div class="banner"><strong>Demo data.</strong> This is a synthetic league used to
+  verify the metrics. Add your league ID to <code>.env</code> and run
+  <code>python3 -m fantasy.cli scrape</code> to replace it with your real league.</div>
+  {% endif %}
+  {% block body %}{% endblock %}
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

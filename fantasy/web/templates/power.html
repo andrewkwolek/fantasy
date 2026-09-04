@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import delta, tile %}
+{% block title %}{{ season }} Power Rankings — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ season }} Power Rankings</h1>
+  <p>A composite of season scoring (30%), recent form (25%), all-play record (30%),
+     consistency (10%) and lineup efficiency (5%). Each component is converted to a
+     within-league percentile first, so no single scale dominates. Record is
+     deliberately absent — it is the noisiest signal in fantasy.</p></div>
+</div>
+
+<div class="card">
+  <h2>This week</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th class="l">#</th><th class="num">Δ</th><th class="l">Team</th>
+      <th class="num">Score</th><th class="num">Rec</th><th class="num">Streak</th>
+      <th class="num">Scoring</th><th class="num">Form</th><th class="num">All-play</th>
+      <th class="num">Consist.</th><th class="num">Eff</th></tr></thead>
+    <tbody>
+    {% for r in power %}
+    <tr>
+      <td class="rank">{{ r.rank }}</td>
+      <td class="num">{{ delta(r.delta) }}</td>
+      <td><a href="/team/{{ season }}/{{ r.team_id }}">{{ r.name }}</a></td>
+      <td class="num"><b>{{ r.score }}</b></td>
+      <td class="num">{{ r.record }}</td>
+      <td class="num muted">{{ r.streak }}</td>
+      <td class="num muted">{{ r.components.season_scoring }}</td>
+      <td class="num muted">{{ r.components.recent_form }}</td>
+      <td class="num muted">{{ r.components.all_play }}</td>
+      <td class="num muted">{{ r.components.consistency }}</td>
+      <td class="num muted">{{ r.components.efficiency }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Power score</h2>
+    <p class="sub">0–100 within this league and season.</p>
+    {{ charts.bar_chart(charts.rows(power, label='name', value='score'),
+         width=560, label_width=150, digits=1)|safe }}
+  </div>
+  {% if odds %}
+  <div class="card">
+    <h2>Playoff odds</h2>
+    <p class="sub">Monte Carlo over the remaining schedule.</p>
+    {{ charts.bar_chart(charts.rows(odds, label='team', value='playoff_odds'),
+         width=560, label_width=150, suffix='%', digits=1)|safe }}
+  </div>
+  {% endif %}
+</div>
+
+{% if series %}
+<div class="card">
+  <h2>Power rank over the season</h2>
+  <p class="sub">Ten teams is more series than any colour palette can keep apart, so
+     every line is drawn in neutral ink — hover a line, or a name below, to bring one
+     forward. Lower is better.</p>
+  {{ charts.line_chart(series, x_labels=x_labels, invert=true,
+                       y_label='Power rank', height=340)|safe }}
+</div>
+{% endif %}
+{% endblock %}

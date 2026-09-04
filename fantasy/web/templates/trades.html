@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import signed %}
+{% block title %}Trades — {{ league_name }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Trade Ledger</h1>
+  <p>Every trade graded on what the pieces did afterwards. <b>Production</b> is all
+     points the acquired players scored from the trade week on; <b>net</b> subtracts
+     what was given up. A deal can win on production and still be wasted if the
+     player never made it into a starting lineup — <b>started</b> shows that.</p></div>
+</div>
+{% set inferred = trades | selectattr('source', 'equalto', 'inferred') | list %}
+{% if inferred %}
+<div class="banner"><strong>{{ inferred|length }} of these
+  {{ trades|length }} trades were reconstructed, not reported.</strong>
+  ESPN only serves its transaction feed for the current season, so for completed
+  years these were recovered by diffing weekly rosters: players moving between the
+  same two teams in both directions in one week. That is a strong signal but not a
+  certainty — two managers claiming each other's drops in the same week would look
+  identical. Rows are marked <span class="pill t">inferred</span>.</div>
+{% endif %}
+
+{% if leaderboard %}
+<div class="grid2">
+  <div class="card">
+    <h2>Trader leaderboard</h2>
+    <p class="sub">Career net production gained across all trades.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="l">Manager</th><th class="num">Trades</th>
+        <th class="num">Won</th><th class="num">Lost</th>
+        <th class="num">Net</th><th class="num">Avg</th></tr></thead>
+      <tbody>
+      {% for r in leaderboard %}
+      <tr><td class="l"><a href="/franchise/{{ data.slug_for(r.franchise_id) }}">{{ r.owner }}</a></td>
+        <td class="num">{{ r.trades }}</td><td class="num">{{ r.wins }}</td>
+        <td class="num muted">{{ r.losses }}</td>
+        <td class="num">{{ signed(r.net) }}</td>
+        <td class="num muted">{{ '%+.1f'|format(r.avg_net) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>Net production by manager</h2>
+    {{ charts.bar_chart(charts.rows(leaderboard, label='owner', value='net'),
+         width=560, label_width=150, diverging=true, suffix=' pts')|safe }}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Every trade{% if trades %} ({{ trades|length }}){% endif %}</h2>
+  {% if trades %}
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="l">Season</th><th class="l">Wk</th><th class="l">Team</th>
+      <th class="l">Received</th><th class="num">Production</th>
+      <th class="num">Started</th><th class="num">Gave up</th><th class="num">Net</th>
+      <th class="l">Verdict</th></tr></thead>
+    <tbody>
+    {% for t in trades %}
+      {% for s in t.sides %}
+      <tr>
+        {% if loop.first %}
+          <td class="l" rowspan="{{ t.sides|length }}">{{ t.season }}</td>
+          <td class="l muted" rowspan="{{ t.sides|length }}">{{ t.week }}</td>
+        {% endif %}
+        <td class="l">{{ s.team }}<div class="ow muted">{{ s.owner }}</div></td>
+        <td class="l">{% for a in s.received %}<span class="chip">{{ a.name }}
+          <span class="muted">{{ a.position }}</span></span> {% endfor %}</td>
+        <td class="num">{{ s.production }}</td>
+        <td class="num muted">{{ s.contribution }}</td>
+        <td class="num muted">{{ s.given_production }}</td>
+        <td class="num">{{ signed(s.net) }}</td>
+        {% if loop.first %}
+        <td class="l" rowspan="{{ t.sides|length }}">
+          {% if t.source == 'inferred' %}<span class="pill t">inferred</span> {% endif %}
+          {% if t.winner %}<span class="chip">{{ t.winner }} by {{ t.verdict_margin }}</span>
+            {% if t.lopsided %}<span class="pill l">lopsided</span>{% endif %}
+          {% else %}<span class="muted">even</span>{% endif %}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No trades found. ESPN only exposes detailed transactions for
+     recent seasons — older years may show nothing here even if trades happened.</p>
+  {% endif %}
+</div>
+{% endblock %}

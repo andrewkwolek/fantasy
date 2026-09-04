@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+jinja2>=3.1
+requests>=2.25
+python-dotenv>=1.0
