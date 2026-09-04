@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Rewritten by the static exporter when the site is served from a sub-path
+     (e.g. /fantasy). Empty for the local server, which serves from the root. -->
+<meta name="base-path" content="">
 <title>{% block title %}{{ league_name }}{% endblock %}</title>
 <link rel="stylesheet" href="/static/app.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏈</text></svg>">
@@ -24,9 +27,11 @@
       <a href="/trades" class="{{ 'active' if p == '/trades' }}">Trades</a>
     </nav>
     {% if seasons %}
-    <select onchange="if(this.value)location.href=this.value" aria-label="Jump to season">
+    <select id="season-jump" aria-label="Jump to season">
       <option value="">Season…</option>
-      {% for y in seasons %}<option value="/season/{{ y }}">{{ y }}</option>{% endfor %}
+      {# Relative on purpose: app.js prepends the base path, which differs
+         between the local server (root) and a static host on a sub-path. #}
+      {% for y in seasons %}<option value="season/{{ y }}">{{ y }}</option>{% endfor %}
     </select>
     {% endif %}
     <button class="btn" id="theme-btn" type="button" aria-label="Toggle theme">Auto</button>

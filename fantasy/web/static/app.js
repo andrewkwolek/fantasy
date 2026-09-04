@@ -53,6 +53,17 @@
     });
   });
 
+  // Season jump. The prefix matters on a static host served from a sub-path:
+  // a bare "/season/2025" would leave the site entirely.
+  const meta = document.querySelector('meta[name="base-path"]');
+  const basePath = (meta && meta.content) || "";
+  const jump = document.getElementById("season-jump");
+  if (jump) {
+    jump.addEventListener("change", () => {
+      if (jump.value) location.href = basePath + "/" + jump.value;
+    });
+  }
+
   // Theme toggle: light -> dark -> follow-system.
   const root = document.documentElement;
   const saved = localStorage.getItem("theme");

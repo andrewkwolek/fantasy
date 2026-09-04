@@ -104,6 +104,11 @@ def cmd_export(args) -> int:
     print(f"  base path: {result['base_path']}   size: {result['bytes'] / 1_000_000:.1f} MB")
     if result["cname"]:
         print(f"  custom domain: {result['cname']}  (CNAME written)")
+    if result.get("unprefixed"):
+        print("\n  Links that would leave the site (missing the base path):")
+        for path, urls in list(result["unprefixed"].items())[:5]:
+            print(f"    {path}: {', '.join(urls[:4])}")
+        return 1
     if result["failed"]:
         print(f"\n  {len(result['failed'])} page(s) failed:")
         for path, err in result["failed"][:10]:

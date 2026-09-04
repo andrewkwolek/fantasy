@@ -58,12 +58,37 @@ def _render(fn: Callable, path: str, **kwargs) -> str:
     return response.body.decode("utf-8")
 
 
+# Any attribute holding a site-absolute URL. Used only to *detect* leftovers --
+# the rewriter itself is deliberately limited to href/src.
+_ANY_ABS = re.compile(r'(?:href|src|action|value|data-[a-z-]+)="(/(?!/)[^"]*)"')
+
+
 def _finalize(html: str, base_path: str, *, noindex: bool) -> str:
     if base_path:
         html = _ABS_URL.sub(rf'\1="{base_path}/', html)
+        # JS navigation cannot use a rewritten attribute, so it reads this.
+        html = html.replace(
+            '<meta name="base-path" content="">',
+            f'<meta name="base-path" content="{base_path}">', 1,
+        )
     if noindex:
         html = html.replace("<head>", "<head>\n" + NOINDEX, 1)
     return html
+
+
+def _unprefixed(html: str, base_path: str) -> list[str]:
+    """Site-absolute URLs that never got the base-path prefix.
+
+    Attribute rewriting only covers href/src, so anything else carrying a path
+    (an <option value>, a form action) would silently point off-site. Catch it
+    at build time rather than in someone's browser.
+    """
+    if not base_path:
+        return []
+    return sorted({
+        url for url in _ANY_ABS.findall(html)
+        if not url.startswith(base_path + "/") and url != base_path
+    })
 
 
 def _scrub(value, slugs: dict[str, str]):
@@ -160,9 +185,14 @@ def build(
         if not data.season_years:
             raise SystemExit("No data to export. Run: python3 -m fantasy.cli scrape")
 
+        stray: dict[str, list[str]] = {}
         for url_path, render in _pages(data):
             try:
-                _write(out, url_path, _finalize(render(), base_path, noindex=noindex))
+                html = _finalize(render(), base_path, noindex=noindex)
+                missed = _unprefixed(html, base_path)
+                if missed:
+                    stray[url_path] = missed
+                _write(out, url_path, html)
                 written += 1
             except Exception as exc:  # one bad page must not lose the build
                 failed.append((url_path, f"{type(exc).__name__}: {exc}"))
@@ -214,6 +244,7 @@ def build(
     return {
         "pages": written,
         "failed": failed,
+        "unprefixed": stray,
         "out": str(out.resolve()),
         "base_path": base_path or "/",
         "bytes": sum(f.stat().st_size for f in out.rglob("*") if f.is_file()),
